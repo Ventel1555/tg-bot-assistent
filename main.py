@@ -1,12 +1,17 @@
-import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-from datetime import datetime, timedelta
+import telebot
 import sqlite3
+from datetime import datetime
+import json
+from typing import Optional, Tuple
 import os
 
-# Для логов
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+# Конфигурация
+TOKEN = "YOUR_BOT_TOKEN"
+SUPPORT_TOKEN = "super_secret_token_123"
+DATABASE = "support_bot.db"
+
+bot = telebot.TeleBot(TOKEN)
+
+# Начало бота
+if __name__ == "__main__":
+    bot.infinity_polling()
