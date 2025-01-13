@@ -1,9 +1,6 @@
 import telebot
-from db import Database # Из файлы db.py
-from datetime import datetime
-import json
+from db import Database # Из файлы db.p
 import sqlite3
-from typing import Optional, Tuple
 import os
 
 # Конфигурация
@@ -16,11 +13,37 @@ db = Database(DATABASE)
 
 bot = telebot.TeleBot(TOKEN)
 
+
+def support_required(func):
+    def wrapper(message):
+        user_id = message.from_user.id
+        if not db.is_support_agent(user_id):
+            bot.reply_to(message, "Эта команда доступна только сотрудникам техподдержки.")
+            return
+        return func(message)
+    return wrapper
+
 # Обработчик команд
 @bot.message_handler(commands=['start'])
 def start_command(message):
     bot.reply_to(message, "Добро пожаловать! Пожалуйста, представьтесь.")
     bot.register_next_step_handler(message, process_name)
+
+@bot.message_handler(commands=['help'])
+def start_command(message):
+    text = '''Вот список доступных команд: 
+
+/start - начало работы для клиента
+/help - это сообщение
+
+Для тех поддержки:
+/register_support <token> - регистрация специалиста
+/available - переключение статуса доступности
+/end_chat - завершение диалога
+/history - получение истории диалога
+/stats - статистика работы специалиста
+    '''
+    bot.reply_to(message, text)
 
 def process_name(message):
     user_id = message.from_user.id
@@ -47,6 +70,7 @@ def register_support_command(message):
         bot.reply_to(message, "Неверный токен.")
 
 @bot.message_handler(commands=['available'])
+@support_required
 def available_command(message):
     agent_id = message.from_user.id
     is_available = not db.find_available_agent()
@@ -55,6 +79,7 @@ def available_command(message):
     bot.reply_to(message, f"Теперь вы {status} для новых запросов.")
 
 @bot.message_handler(commands=['end_chat'])
+@support_required
 def end_chat_command(message):
     agent_id = message.from_user.id
     client_id = db.end_chat(agent_id)
@@ -64,11 +89,31 @@ def end_chat_command(message):
     else:
         bot.reply_to(message, "У вас нет активного диалога.")
         
+@bot.message_handler(commands=['history'])
+@support_required
+def history_command(message):
+    agent_id = message.from_user.id
+    client_id = db.end_chat(agent_id)
+    if client_id:
+        history = db.get_chat_history(client_id, agent_id)
+        if history:
+            history_text = "\n".join([f"{ts} - {sender}: {msg}" for msg, sender, ts in history])
+            with open(f"history_{client_id}.txt", "w", encoding="utf-8") as f:
+                f.write(history_text)
+            bot.send_document(agent_id, open(f"history_{client_id}.txt", "rb"))
+            os.remove(f"history_{client_id}.txt")
+        else:
+            bot.reply_to(message, "История диалога пуста.")
+    else:
+        bot.reply_to(message, "У вас нет активного диалога.")
 
-# stats
-
-# history 
-
+@bot.message_handler(commands=['stats'])
+@support_required
+def stats_command(message):
+    agent_id = message.from_user.id
+    stats = db.get_agent_stats(agent_id)
+    stats_text = f"Статистика:\nВсего клиентов: {stats['total_clients']}\nВсего сообщений: {stats['total_messages']}"
+    bot.reply_to(message, stats_text)
 
 # Обработчик всех смсок от пользователей
 @bot.message_handler(func=lambda message: True)

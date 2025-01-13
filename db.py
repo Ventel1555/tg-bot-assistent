@@ -1,6 +1,6 @@
 import sqlite3
-
-
+from typing import Optional, Tuple
+from datetime import datetime
 
 # настройка бд
 class Database:
@@ -117,6 +117,3 @@ class Database:
                 "total_clients": clients,
                 "total_messages": messages
             }
-
-# Initialize database
-db = Database(DATABASE)
